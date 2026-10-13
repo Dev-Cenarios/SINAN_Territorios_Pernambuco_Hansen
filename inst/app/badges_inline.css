@@ -1,0 +1,572 @@
+ .rt-td, .rt-tr-group {
+  overflow: visible !important;
+}
+
+.rt-tr-group:hover {
+  z-index: 9999 !important;
+  position: relative; /* This 'activates' the z-index */
+}
+
+ /* Styling the ID part to look interactive */
+.id-trigger {
+  font-weight: bold;
+  text-decoration: underline dotted;
+  cursor: help;
+  position: relative; /* Essential for positioning the tooltip */
+}
+
+/* Creating the Tooltip Box */
+.id-trigger::after {
+  content: attr(data-tooltip); /* Pulls text from the data-tooltip attribute */
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  z-index: 10000;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: normal;
+  visibility: hidden; /* Hidden by default */
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* Showing the Tooltip on Hover */
+.id-trigger:hover::after {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Identidade visual dos paineis do Programa Cenarios
+   (guia "Documentacao -- ID visual para paineis", cenarios.unb.br).
+   Tokens copiados do bloco "CSS / Variaveis" do guia -- as mesmas cores
+   ficam em R (cores_cen / cores_desfecho em R/mod_municipio.R e o tema em
+   R/utils_app_theme.R).
+   ========================================================================== */
+:root {
+  --cen-azul: #3891C0;
+  --cen-azul-acao: #0E7BA8;
+  --cen-azul-texto: #00638C;
+  --cen-terra: #B67355;
+  --cen-terra-texto: #8C4A2A;
+  --cen-azul-fundo: #E6F1F7;
+  --cen-terra-fundo: #F6EBE5;
+  --cen-tinta: #12222B;
+  --cen-tinta-2: #4A4A4A;
+  --cen-tinta-3: #7A8B95;
+  --cen-linha: #D8E3EA;
+  --cen-fundo: #F2F6F9;
+  --cen-superficie: #FFFFFF;
+  --cen-ok: #1F6F4A;
+  --cen-atencao: #8A6100;
+  --cen-grave: #C24B12;
+  --cen-critico: #A32235;
+  --cen-s1: #3891C0; --cen-s2: #C0663C; --cen-s3: #6C5CA8; --cen-s4: #5A9E2E;
+  --cen-s5: #8E3B46; --cen-s6: #B08A1E; --cen-s7: #3F4E9E; --cen-s8: #1B9AAA;
+
+  /* Navy nas barras estrategicas -- cabecalho e barras de titulo das
+     caixas (vem tambem do "primary" do tema em R/utils_app_theme.R). Herdado
+     do painel de TB de Recife (excecao ao guia pedida pela equipe de la') */
+  --painel-navy: #12346B;
+}
+
+/* Tipografia: DM Sans 400 no corpo, rotulos e tabelas (14-15 px / 1.55) */
+body,
+.content-wrapper,
+.leaflet-container,
+.reactable,
+.modal-content {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--cen-tinta-2);
+}
+
+/* Poppins 700 nos titulos, azul titulos */
+h1, h2, h3, h4,
+.card-title,
+.modal-title {
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700 !important;
+  color: var(--cen-azul-texto);
+}
+
+/* Titulo do painel ("Panorama geral"): 28-36 px / 1.2 */
+.content-wrapper h1 {
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+/* Titulos de secao (blocos do mapa, titulo do mapa): 20-24 px / 1.3 */
+.content-wrapper h3 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+/* Numeros tabulares em qualquer coluna/valor numerico */
+.reactable,
+.rt-table,
+.small-box .inner h3,
+.info.legend,
+.leaflet-tooltip {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cabecalho em navy (barra estrategica). O guia diz que, dentro do
+   WordPress, a faixa azul/cabecalho vem do template do site -- este painel
+   mantem cabecalho proprio, em navy, como o painel de TB de Recife. */
+.main-header.navbar {
+  background-color: var(--painel-navy) !important;
+  border-bottom: none;
+}
+/* Logo do Cenarios (PNG transparente, texto azul + contorno terracota --
+   feito pra fundo claro) sobre uma "etiqueta" branca, senao some no azul */
+.main-header .logo-cenarios {
+  background: var(--cen-superficie);
+  border-radius: 6px;
+  padding: 2px;
+}
+.main-header.navbar h4 {
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+}
+
+/* Texto branco nos titulos das caixas com cabecalho solido "primary"
+   (barra navy: Mapa de casos, Tabela de casos). So' nas solidas -- a
+   caixa de Filtros (card-outline, cabecalho transparente) ficava com o
+   titulo branco sobre branco. */
+.card.bg-primary > .card-header,
+.card-primary:not(.card-outline) > .card-header,
+.card.bg-primary .card-title,
+.card-primary:not(.card-outline) .card-title,
+.card.bg-primary .card-header i,
+.card-primary:not(.card-outline) .card-header i {
+  color: #FFF !important;
+}
+.card-primary > .card-header .card-title {
+  font-size: 20px;
+}
+/* Caixas so' com borda (Filtros): titulo em azul titulos do guia */
+.card-primary.card-outline > .card-header .card-title,
+.card-primary.card-outline > .card-header i {
+  color: var(--cen-azul-texto) !important;
+}
+
+/* Botoes de acao: azul acao do guia */
+.btn-primary,
+.btn-primary:not(:disabled):not(.disabled):active {
+  background-color: var(--cen-azul-acao) !important;
+  border-color: var(--cen-azul-acao) !important;
+  color: #FFF !important;
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--cen-azul-texto) !important;
+  border-color: var(--cen-azul-texto) !important;
+}
+
+a {
+  color: var(--cen-azul-acao);
+}
+
+/* Cards de estatistica (topo): superficie branca, numero do KPI em
+   DM Sans 700 escuro (32-40 px / 1.15), barra lateral na cor do indicador.
+   A cor de cada card vem da classe bg-gradient-* que o bs4ValueBox gera a
+   partir do argumento `color` (ver R/mod_municipio.R). */
+.small-box {
+  background: var(--cen-superficie) !important;
+  background-image: none !important;
+  border: 1px solid var(--cen-linha);
+  border-left: 5px solid var(--cen-card-cor, var(--cen-azul));
+  border-radius: 8px;
+  box-shadow: none !important;
+}
+.small-box.bg-gradient-teal    { --cen-card-cor: var(--cen-s1); }       /* Casos novos */
+.small-box.bg-gradient-warning { --cen-card-cor: var(--cen-azul-acao); } /* Em tratamento */
+.small-box.bg-gradient-success { --cen-card-cor: var(--cen-ok); }        /* Curados */
+.small-box.bg-gradient-danger  { --cen-card-cor: var(--cen-critico); }   /* GIF 2 no diagnostico */
+.small-box.bg-gradient-orange  { --cen-card-cor: var(--cen-grave); }     /* Abandono */
+.small-box.bg-gradient-olive   { --cen-card-cor: var(--cen-s6); }        /* Paucibacilares */
+.small-box.bg-gradient-purple  { --cen-card-cor: var(--cen-s3); }        /* Multibacilares */
+.small-box.bg-gradient-indigo  { --cen-card-cor: var(--cen-s7); }        /* Menores de 15 anos */
+.small-box.bg-gradient-maroon  { --cen-card-cor: var(--cen-s5); }        /* Contatos examinados */
+.small-box.bg-gradient-info    { --cen-card-cor: var(--cen-s8); }        /* GIF avaliado no diagnostico */
+
+.small-box .inner h3 {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700 !important;
+  font-size: 34px;
+  line-height: 1.15;
+  color: var(--cen-tinta) !important;
+}
+.small-box .inner h5,
+.small-box .inner p {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400 !important;
+  font-size: 15px;
+  color: var(--cen-tinta-2) !important;
+}
+.small-box .icon > i {
+  color: var(--cen-card-cor, var(--cen-azul)) !important;
+  opacity: 0.25;
+}
+.small-box .small-box-footer {
+  background: var(--cen-azul-fundo) !important;
+  color: var(--cen-azul-acao) !important;
+  border-radius: 0 0 8px 0;
+}
+/* Atalhos "Ver paucibacilares", "Ver multibacilares" e "Ver nao
+   avaliados": cada um na cor do seu card, pra nao confundir com o "Ver
+   todos em tratamento" (azul) */
+.small-box.bg-gradient-olive .small-box-footer {
+  background: rgba(176, 138, 30, 0.12) !important;
+  color: var(--cen-s6) !important;
+}
+.small-box.bg-gradient-purple .small-box-footer {
+  background: rgba(108, 92, 168, 0.12) !important;
+  color: var(--cen-s3) !important;
+}
+.small-box.bg-gradient-info .small-box-footer {
+  background: rgba(27, 154, 170, 0.12) !important;
+  color: var(--cen-s8) !important;
+}
+
+/* Cards de estatistica com altura igual dentro de cada linha: a coluna
+   estica ate' a altura do card mais alto da linha (flex do bootstrap), o
+   card ocupa a coluna toda (menos a margem de baixo) e o rodape fica no
+   fundo, dentro do card. Com altura fixa, um subtitulo de duas linhas
+   empurrava o rodape pra cima da linha de baixo. */
+.card-estatistica > .shiny-html-output {
+  height: 100%;
+}
+.card-estatistica .small-box {
+  height: calc(100% - 20px);
+  display: flex !important;
+  flex-direction: column !important;
+}
+.card-estatistica .small-box > .inner {
+  flex: 1 1 auto;
+}
+.card-estatistica .small-box .small-box-footer {
+  margin-top: auto;
+}
+
+/* Mapa: legenda e rotulos em DM Sans 400 12-13 px (eixo/legenda do guia) */
+.info.legend {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--cen-tinta-3);
+}
+.info.legend strong,
+.info.legend .legend-title {
+  color: var(--cen-tinta);
+}
+.leaflet-tooltip {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--cen-tinta-2);
+}
+.leaflet-control-layers {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--cen-tinta-2);
+}
+
+/* Tabelas (reactable): cabecalho em tinta escura, linhas da paleta */
+.rt-th {
+  color: var(--cen-tinta);
+  font-weight: 700;
+}
+.rt-tr-header,
+.rt-td {
+  border-color: var(--cen-linha) !important;
+}
+.rt-page-button-current {
+  background-color: var(--cen-azul-fundo) !important;
+  color: var(--cen-azul-acao) !important;
+  font-weight: 700;
+}
+.rt-search,
+.rt-filter,
+.rt-page-jump,
+.rt-page-size-select {
+  border-color: var(--cen-linha) !important;
+}
+
+/* ==========================================================================
+   Controles (filtros, recorte, datas) -- azul acao do guia no estado
+   ativo/selecionado; bordas e fundos da paleta
+   ========================================================================== */
+
+/* Radio/checkbox nativos (recorte Bairro/DS, selecao da tabela de desfechos) */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--cen-azul-acao);
+}
+
+/* Botoes secundarios (Abrir filtros, Limpar filtros): contorno azul acao */
+.btn-secondary {
+  background-color: var(--cen-superficie) !important;
+  color: var(--cen-azul-acao) !important;
+  border: 1px solid var(--cen-azul-acao) !important;
+}
+.btn-secondary:hover,
+.btn-secondary:focus {
+  background-color: var(--cen-azul-fundo) !important;
+}
+
+/* Grupo de botoes do filtro de Sexo (checkboxGroupButtons status "info"):
+   selecionado = azul acao cheio; nao selecionado = contorno */
+.btn-info,
+.btn-info.active,
+.btn-info:not(:disabled):not(.disabled).active {
+  background-color: var(--cen-azul-acao) !important;
+  border-color: var(--cen-azul-acao) !important;
+  color: #FFF !important;
+}
+.btn-group-toggle .btn-info:not(.active) {
+  background-color: var(--cen-superficie) !important;
+  color: var(--cen-azul-acao) !important;
+}
+
+/* Caixa "Mostrar indicador no mapa" (prettyCheckbox status "info") */
+.pretty input:checked ~ .state.p-info label:after,
+.pretty.p-toggle .state.p-info label:after {
+  background-color: var(--cen-azul-acao) !important;
+}
+
+/* Slider de idade (ionRangeSlider, skin "shiny") */
+.irs--shiny .irs-bar {
+  background: var(--cen-azul-acao);
+  border-top-color: var(--cen-azul-acao);
+  border-bottom-color: var(--cen-azul-acao);
+}
+.irs--shiny .irs-from,
+.irs--shiny .irs-to,
+.irs--shiny .irs-single {
+  background-color: var(--cen-azul-acao);
+  font-variant-numeric: tabular-nums;
+}
+.irs--shiny .irs-from:before,
+.irs--shiny .irs-to:before,
+.irs--shiny .irs-single:before {
+  border-top-color: var(--cen-azul-acao);
+}
+.irs--shiny .irs-handle {
+  border-color: var(--cen-azul-acao);
+}
+.irs--shiny .irs-min,
+.irs--shiny .irs-max,
+.irs--shiny .irs-grid-text {
+  color: var(--cen-tinta-3);
+}
+
+/* Calendario do filtro de periodo (bootstrap-datepicker) */
+.datepicker table tr td.active,
+.datepicker table tr td.active:hover,
+.datepicker table tr td.active.active,
+.datepicker table tr td span.active {
+  background-color: var(--cen-azul-acao) !important;
+  background-image: none !important;
+  color: #FFF !important;
+}
+.datepicker table tr td.today {
+  background-color: var(--cen-terra-fundo) !important;
+  background-image: none !important;
+}
+
+/* Listas de selecao (pickerInput / selectInput) */
+.bootstrap-select .dropdown-menu li.selected a,
+.bootstrap-select .dropdown-menu li a:active,
+.dropdown-item.active,
+.dropdown-item:active,
+.selectize-dropdown .active {
+  background-color: var(--cen-azul-fundo) !important;
+  color: var(--cen-azul-texto) !important;
+}
+
+/* Foco dos campos */
+.form-control:focus,
+.selectize-input.focus,
+.bootstrap-select .dropdown-toggle:focus {
+  border-color: var(--cen-azul) !important;
+  box-shadow: 0 0 0 0.2rem rgba(56, 145, 192, 0.25) !important;
+}
+
+/* Rotulos dos campos */
+.control-label,
+.content-wrapper label {
+  color: var(--cen-tinta);
+}
+
+/* Popup dos pontos de caso no mapa */
+.leaflet-popup-content {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--cen-tinta-2);
+}
+.leaflet-popup-content b {
+  color: var(--cen-tinta);
+}
+
+/* Notificacoes (atualizacao de dados etc.): barra lateral na cor de estado */
+.shiny-notification {
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  border-left: 5px solid var(--cen-azul);
+}
+.shiny-notification-error {
+  border-left-color: var(--cen-critico);
+}
+.shiny-notification-warning {
+  border-left-color: var(--cen-atencao);
+}
+
+/* Indicador de carregamento no mapa e na tabela de casos (classe
+   "saida-carregando" num div em volta da saida, em R/mod_municipio.R):
+   enquanto o servidor recalcula, o Shiny marca a saida com .recalculating
+   -- esmaece o conteudo e mostra um anel girando no centro, no azul acao
+   do guia. So' aparece se o recalculo passar de 0,4 s, pra nao piscar nas
+   trocas rapidas. */
+.saida-carregando > .shiny-bound-output {
+  position: relative;
+}
+.saida-carregando > .recalculating {
+  opacity: 0.55 !important;
+}
+/* O mapa nao e' mais recalculado como um todo -- as camadas sao
+   atualizadas por leafletProxy e a saida nunca fica .recalculating. Nele
+   (classe "saida-carregando-ocupado") o indicador segue o estado "ocupado"
+   do servidor (html.shiny-busy), com o mesmo atraso de 0,4 s. */
+html.shiny-busy .saida-carregando-ocupado > .shiny-bound-output {
+  opacity: 0.55;
+  transition: opacity 0.2s ease 0.4s;
+}
+.saida-carregando > .recalculating::after,
+html.shiny-busy .saida-carregando-ocupado > .shiny-bound-output::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 4px solid var(--cen-azul-fundo);
+  border-top-color: var(--cen-azul-acao);
+  border-radius: 50%;
+  z-index: 1100; /* acima dos paineis e controles do Leaflet */
+  animation: cen-gira 0.8s linear infinite, cen-surge 0.2s ease 0.4s both;
+}
+@keyframes cen-gira {
+  to { transform: rotate(360deg); }
+}
+@keyframes cen-surge {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Agrupamentos das unidades de saude no mapa (Leaflet.markercluster, ver
+   adicionar_camada_unidades() em R/mod_municipio.R): circulo branco com o
+   total, no vermelho critico do "S" (rede SUS) ou na cor de tinta do "✕"
+   (outras notificadoras). */
+.cluster-unidades div {
+  width: 30px;
+  height: 30px;
+  margin: 1px 0 0 1px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 3px rgba(18, 34, 43, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cluster-sus div {
+  border: 2px solid var(--cen-critico);
+  color: var(--cen-critico);
+}
+.cluster-outras div {
+  border: 2px solid var(--cen-tinta);
+  color: var(--cen-tinta);
+}
+
+/* Territorio selecionado no mapa (coluna "Panorama geral", ver
+   output$territorio_ui em R/mod_municipio.R): sem selecao, a dica; com
+   selecao, o nome e o botao de voltar pro estado. */
+.territorio-dica {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--cen-tinta-3);
+}
+.territorio-selecionado {
+  margin-top: 14px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--cen-superficie);
+  border: 1px solid var(--cen-linha);
+  border-left: 5px solid var(--cen-tinta);
+  border-radius: 8px;
+}
+.territorio-rotulo {
+  font-size: 12px;
+  color: var(--cen-tinta-3);
+}
+.territorio-nome {
+  margin-bottom: 8px;
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--cen-tinta);
+}
+
+/* ===================================================================== */
+/* Versao de demonstracao: avisos de DADOS FICTICIOS                      */
+/* Amarelo de "atencao" com texto escuro: visivel no cabecalho navy, na   */
+/* pagina clara e sobre o mapa, sem parecer mensagem de erro.             */
+/* ===================================================================== */
+.selo-ficticio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F2B705;
+  color: var(--cen-tinta);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .04em;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.modal-title .selo-ficticio { font-size: 12px; vertical-align: middle; margin-left: 6px; }
+.selo-mapa {
+  font-size: 14px;
+  padding: 8px 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+}
+.faixa-ficticia {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #FFF4CC;
+  border: 1px solid #F2B705;
+  border-left: 8px solid #F2B705;
+  color: var(--cen-tinta);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  padding: 10px 14px;
+  margin: 0 0 12px 0;
+  border-radius: 4px;
+}
+.faixa-ficticia > .fa, .faixa-ficticia > .fas, .faixa-ficticia > svg { color: var(--cen-atencao); font-size: 20px; flex: 0 0 auto; }

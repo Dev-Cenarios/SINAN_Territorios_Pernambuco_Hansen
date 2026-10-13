@@ -1,0 +1,22 @@
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+.quarto
+local*
+.env
+.Renviron
+app_cache/
+/Cenarios_TB_Recife/
+
+# Dados reais e credenciais nunca entram no repositorio (ver README, "Rodar
+# com dados reais"). So' os CSVs ficticios de inst/extdata sao versionados.
+dados_reais/
+*.csv
+!inst/extdata/dados_ficticios/*.csv
+*.duckdb
+*.duckdb.wal
+
+# Versao web gerada por dev/build_shinylive.R (publicada no branch gh-pages)
+site/

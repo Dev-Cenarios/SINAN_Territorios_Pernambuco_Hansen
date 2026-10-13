@@ -1,0 +1,44 @@
+Package: SINANTerritoriosHansenPE
+Title: SINAN Territorios Hanseniase Pernambuco (Demonstracao com Dados Ficticios)
+Version: 0.0.0.9000
+Authors@R:
+    person(given = "Eduardo",
+           role = c("aut", "cre"),
+           email = "geoprocenarios@gmail.com")
+Description: Versao de demonstracao do painel de vigilancia de casos de hanseniase do estado de Pernambuco, com dados SINAN inteiramente ficticios.
+License: MIT + file LICENSE
+Imports: 
+    attempt,
+    bs4Dash,
+    config,
+    DBI,
+    dplyr,
+    DT,
+    duckdb,
+    fresh,
+    glue,
+    golem,
+    htmltools,
+    htmlwidgets,
+    leaflet,
+    lubridate,
+    plotly,
+    purrr,
+    reactable,
+    scales,
+    sf,
+    shiny,
+    shinyjs,
+    shinyWidgets,
+    tibble,
+    tidyr,
+    shinytoastr,
+    stringi
+Encoding: UTF-8
+LazyData: true
+Suggests: 
+    spelling,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Language: en-US
+Config/roxygen2/version: 8.0.0
