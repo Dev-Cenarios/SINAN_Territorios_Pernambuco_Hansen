@@ -4,9 +4,9 @@
 >
 > **DADOS FICTÍCIOS.** Esta é uma vitrine do painel, com dados do SINAN **inteiramente fictícios**. Nenhum caso, nome, endereço, data ou coordenada corresponde a uma pessoa real. A versão de produção roda com dados sigilosos de pacientes, em ambiente seguro da Secretaria de Saúde, e não é distribuída aqui. Veja [como os dados fictícios foram gerados](#2-dados-fictícios).
 
-### [▶ Ver o painel ao vivo](https://dev-cenarios.github.io/SINAN_Territorios_Pernambuco_Hansen/)
+### [▶ Ver o painel ao vivo](https://cenariostb.unb.br/SINAN_Territorios_PE_Hansen_port/)
 
-O painel roda inteiro no seu navegador, com os dados fictícios, sem instalar nada. A primeira abertura leva de 30 segundos a pouco mais de um minuto, conforme a conexão — o navegador baixa o R e os pacotes —, e as seguintes são mais rápidas. Funciona melhor num computador; em celulares mais simples pode ficar lento ([como é feito](#67-versão-web-github-pages)).
+O painel roda no servidor do Programa Cenários, com os dados fictícios: abre direto no navegador, sem instalar nada ([como é feito](#67-painel-ao-vivo)).
 
 Painel de vigilância epidemiológica de hanseníase do estado de Pernambuco, construído em R/Shiny com o framework [`golem`](https://engineering-shiny.org/). O painel consolida as notificações de hanseníase do SINAN. Gestores e equipes de vigilância acompanham num só lugar os casos novos, a taxa de detecção por município e por GERES, o diagnóstico tardio (grau 2 de incapacidade), a transmissão recente (casos em menores de 15 anos), os desfechos do tratamento e o exame de contatos. Há filtros por período, perfil demográfico e características clínicas.
 
@@ -103,7 +103,7 @@ Os avisos de dados fictícios aparecem sempre que a base carregada é a fictíci
 │               └── geres_pe.gpkg       # 12 GERES + população
 ├── dev/
 │   ├── gerar_dados_ficticios.R  # Gera a base fictícia desta vitrine
-│   ├── build_shinylive.R        # Gera a versão web (Shinylive) publicada no GitHub Pages
+│   ├── build_shinylive.R        # Gera a versão estática do painel (Shinylive), opcional
 │   ├── build_malhas_pe.R        # Gera as duas malhas acima (geobr + SIDRA/IBGE)
 │   ├── build_unidades_cnes.R    # Gera a camada de unidades de saúde (API do CNES + SESAU Recife)
 │   └── 01_start.R, 02_dev.R, …  # Scripts padrão do golem
@@ -218,11 +218,30 @@ Precisa de internet (API do CNES e ESIG da Prefeitura do Recife) e leva alguns m
 
 As malhas de municípios e GERES são regeradas com `Rscript dev/build_malhas_pe.R` (só precisa de internet: geobr e SIDRA). O script para com erro se sobrar polígono inválido, fresta ou sobreposição entre vizinhos, ou buraco numa GERES.
 
-### 6.7 Versão web (GitHub Pages)
+### 6.7 Painel ao vivo
 
-O [painel ao vivo](https://dev-cenarios.github.io/SINAN_Territorios_Pernambuco_Hansen/) usa o [Shinylive](https://posit-dev.github.io/r-shinylive/): o R, compilado para WebAssembly ([webR](https://docs.r-wasm.org/webr/latest/)), roda no navegador de quem visita, sem servidor. É um site estático no branch `gh-pages` deste repositório, publicado pelo GitHub Pages.
+O [painel ao vivo](https://cenariostb.unb.br/SINAN_Territorios_PE_Hansen_port/) roda no Shiny Server do Programa Cenários, direto de um clone deste repositório, com os dados fictícios. Para montar num Shiny Server (como usuário com `sudo`, numa pasta vazia criada em `/srv/shiny-server/`):
 
-Para regerar o site (por exemplo, depois de mudar o painel ou os dados fictícios):
+```bash
+git clone https://github.com/Dev-Cenarios/SINAN_Territorios_Pernambuco_Hansen.git .
+mkdir -p local && sudo chgrp shiny local && sudo chmod 2775 local
+```
+
+O Shiny Server roda o painel como usuário `shiny`, que precisa escrever em `local/` para montar a base na primeira abertura. Antes de deixar público, confira que `PAINEL_HANSEN_PE_DADOS_REAIS_DIR` está vazia para esse usuário (`sudo -H -u shiny Rscript -e 'Sys.getenv("PAINEL_HANSEN_PE_DADOS_REAIS_DIR")'`). Se não estiver, o painel carregaria a base real, sem os avisos.
+
+**Não instale o pacote no servidor.** O painel roda direto da pasta, e o nome do pacote (`SINANTerritoriosHansenPE`) é o mesmo do painel de produção — instalar sobrescreveria o pacote dele.
+
+Para atualizar depois de mudanças no repositório:
+
+```bash
+git pull && touch restart.txt
+```
+
+#### Versão estática (Shinylive)
+
+O repositório também gera uma versão do painel que roda inteira no navegador, sem servidor, com o [Shinylive](https://posit-dev.github.io/r-shinylive/) (o R compilado para WebAssembly, o [webR](https://docs.r-wasm.org/webr/latest/)). Ela pode ser publicada como site estático no GitHub Pages, mas abre bem mais devagar — o navegador baixa o R e os pacotes a cada primeira visita —, por isso o painel ao vivo fica no servidor.
+
+Para gerar o site:
 
 ```bash
 Rscript dev/build_shinylive.R
@@ -230,7 +249,7 @@ Rscript dev/build_shinylive.R
 
 O script monta a base fictícia, copia para uma pasta temporária só o código que o painel executa, as malhas e os caches prontos de `local/` (o navegador não refaz a carga do CSV) e exporta tudo para `site/` (não versionada no `main`). **Ele só aceita a base fictícia**: para com erro se `PAINEL_HANSEN_PE_DADOS_REAIS_DIR` estiver definido ou se a base local não for a fictícia, porque o site é público. Para ver antes de publicar: `Rscript -e "httpuv::runStaticServer('site', port = 8009)"` e abra `http://localhost:8009`.
 
-Para publicar, substituindo o site anterior:
+Para publicar no branch `gh-pages`, substituindo o site anterior:
 
 ```bash
 cd site
