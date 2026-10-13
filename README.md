@@ -10,7 +10,7 @@ O painel roda inteiro no seu navegador, com os dados fictícios, sem instalar na
 
 Painel de vigilância epidemiológica de hanseníase do estado de Pernambuco, construído em R/Shiny com o framework [`golem`](https://engineering-shiny.org/). O painel consolida as notificações de hanseníase do SINAN. Gestores e equipes de vigilância acompanham num só lugar os casos novos, a taxa de detecção por município e por GERES, o diagnóstico tardio (grau 2 de incapacidade), a transmissão recente (casos em menores de 15 anos), os desfechos do tratamento e o exame de contatos. Há filtros por período, perfil demográfico e características clínicas.
 
-> O painel foi derivado do [SINAN Territórios: Recife-PE](https://github.com/Dev-Cenarios/SINAN_Territorios_Recife_PE_TB) ([painel ao vivo](https://dev-cenarios.github.io/SINAN_Territorios_Recife_PE_TB/)), de tuberculose, e reaproveita a arquitetura, a identidade visual e as otimizações de desempenho dele.
+> O painel foi derivado do [SINAN Territórios: Recife-PE](https://github.com/Dev-Cenarios/SINAN_Territorios_Recife_PE_TB) ([painel ao vivo](https://cenariostb.unb.br/SINAN_Territorios_Recife_PE_TB_port/)), de tuberculose, e reaproveita a arquitetura, a identidade visual e as otimizações de desempenho dele.
 
 ## Sobre o Projeto
 
