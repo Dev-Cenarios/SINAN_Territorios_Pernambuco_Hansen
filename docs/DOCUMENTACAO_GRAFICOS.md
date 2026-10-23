@@ -55,7 +55,8 @@ Os **atalhos** aplicam um filtro mantendo os demais (classificação operacional
 
 - **O que mostra**: cada notificação georreferenciada (`georreferenciado = 1`, classificado pela pipeline de georreferenciamento), colorida pelo desfecho. O hover mostra sexo, idade, classificação operacional e desfecho; o clique abre um popup com os dados do caso.
 - **Como é calculado**: casos filtrados, restritos aos desfechos marcados na tabela "Distribuição dos desfechos" (seção 2.3). Casos não georreferenciados ficam fora do mapa, mas continuam nos cards, nos indicadores por território e na tabela.
-- **Código**: `casos_points()` e o observador "Casos no mapa"; popup em `popup_caso()`.
+- **Balões por município**: com o mapa afastado (abaixo do zoom 11, `ZOOM_PONTOS_CASOS`), os pontos dão lugar a um balão por município, no ponto interno dele, com o número de pontos de residentes do município (`territorio_municipio`, o mesmo dos indicadores); o tamanho cresce com a raiz da contagem. Aproximando, o balão vira os mesmos pontos. A troca é feita no navegador (`js_casos_por_zoom`), sem ir ao servidor, e respeita o checkbox "Casos" do controle de camadas. Pontos de residentes de outros estados (sem município de PE) aparecem em qualquer zoom. Com um território selecionado (seção 2.7), sem balões: os pontos dele aparecem em qualquer zoom. A legenda dos desfechos só aparece com os pontos; com os balões, um aviso para aproximar o zoom.
+- **Código**: `casos_points()` e o observador "Casos no mapa"; popup em `popup_caso()`; posição dos balões em `pontos_internos_municipios()` (`R/fct_casos.R`).
 
 ### 2.2 Indicador por território: município ou GERES
 
@@ -83,6 +84,7 @@ Os **atalhos** aplicam um filtro mantendo os demais (classificação operacional
 ### 2.3 Tabela de distribuição de desfechos (legenda/filtro do mapa)
 
 - **O que mostra**: frequência e percentual de cada desfecho entre os casos filtrados, com barras nas cores do mapa. Marcar/desmarcar uma linha mostra/esconde aqueles pontos no mapa.
+- **Onde fica**: num painel por cima do mapa, no canto superior esquerdo, aberto por padrão; recolhe (ou abre de novo) clicando no título, e em tela estreita fica acima do mapa. O mapa ocupa a largura toda da caixa, e o enquadramento do estado (e do território selecionado) deixa o painel de lado (`js_enquadra`). Os controles do indicador (mostrar no mapa, recorte e indicador) ficam numa barra fina acima do mapa, com a nota do indicador e a dica do clique logo abaixo. Mesmo layout dos demais painéis.
 - **Desfechos** (agrupados a partir do tipo de saída `TPALTA_N`): Cura, Em tratamento, Abandono, Óbito, Transferência (as cinco modalidades de transferência juntas) e Erro diagnóstico. A ficha do caso mostra o tipo de saída detalhado.
 
 ### 2.4 Contorno das GERES
@@ -91,10 +93,12 @@ Os **atalhos** aplicam um filtro mantendo os demais (classificação operacional
 - **Fonte**: regiões de saúde do Ministério da Saúde (`geobr`, 2013), que em Pernambuco coincidem com as 12 GERES da SES-PE. Ver `dev/build_malhas_pe.R`.
 - **Geometria**: cada GERES é a união dos seus municípios, então o contorno cai exatamente sobre as divisas municipais. Isso depende de a malha municipal ser uma cobertura sem frestas, o que a versão simplificada do `geobr` não é (cada município simplificado por conta própria deixava ~750 frestas, desenhadas como riscos soltos dentro das GERES). Por isso o script parte da malha original do IBGE e simplifica cada divisa uma única vez, a 100 m (`simplifica_cobertura()`).
 
-### 2.5 Unidades de saúde (camadas "Rede SUS (S)" e "Outras notificadoras (✕)")
+### 2.5 Unidades de saúde (camadas "UBS (U)", "Rede SUS (✚)" e "Outras notificadoras (✕)")
 
-- **O que mostra**: as unidades de saúde do CNES, como no painel de TB de Recife.
-  - **Rede SUS ("S" vermelho)**: toda a rede pública assistencial de Pernambuco, mesmo sem caso notificado — postos de saúde, UBS/USF, policlínicas, hospitais gerais e especializados, unidades mistas, prontos-socorros, clínicas e centros de especialidade, centros de parto normal, hospitais-dia, CAPS e UPA (tipos 1, 2, 4, 5, 7, 15, 20, 21, 36, 61, 62, 70 e 73 do CNES), cerca de 4 mil unidades. Uma unidade pública de outro tipo (vigilância, gestão) entra se notificou algum caso.
+- **O que mostra**: as unidades de saúde do CNES, com o mesmo padrão dos painéis de TB (Recife, SP, Manaus, PE) e do DF.
+  - **UBS ("U" azul)**: as UBS/USF da rede pública (tipo 2 do CNES, "Centro de saúde/Unidade básica").
+  - **Rede SUS (cruz azul, que remete à marca do SUS)**: o resto da rede pública assistencial de Pernambuco — postos de saúde, policlínicas, hospitais gerais e especializados, unidades mistas, prontos-socorros, clínicas e centros de especialidade, centros de parto normal, hospitais-dia, CAPS e UPA (tipos 1, 4, 5, 7, 15, 20, 21, 36, 61, 62, 70 e 73 do CNES). Uma unidade pública de outro tipo (vigilância, gestão) entra se notificou algum caso.
+  - UBS e rede SUS somam cerca de 4 mil unidades e aparecem mesmo sem caso notificado, no azul `#0B5CAD` dos demais painéis.
   - **Outras notificadoras ("✕")**: as demais unidades que aparecem como notificadoras nos casos (filantrópicas, privadas).
   - O hover traz nome, tipo, natureza jurídica (com "atende SUS" nas não públicas), município e quantos casos a unidade notificou no período e nos filtros atuais.
 - **Por que existe**: mostrar onde está a rede e quais unidades de fato notificam hanseníase, ao lado da distribuição dos casos e do indicador.
@@ -102,10 +106,10 @@ Os **atalhos** aplicam um filtro mantendo os demais (classificação operacional
   - "Pública" é definida pela **natureza jurídica** (1xxx, administração pública; 2011 e 2038, empresa pública e sociedade de economia mista), não pela esfera administrativa, que no CNES reflete a gestão. Só entram unidades habilitadas e localizadas em Pernambuco.
   - Notificadora é a unidade do campo `ID_UNIDADE` dos casos (código CNES, completado com zeros até 7 dígitos). No extrato de fev/2026, 97,1% dos casos foram notificados por unidades da camada da rede SUS e 0,3% por outras notificadoras. Os 2,6% restantes vêm de unidades desabilitadas no CNES, ausentes da API ou de fora de Pernambuco, que não aparecem no mapa.
   - **Coordenada**: a do CNES; em Recife, a da camada oficial da SESAU no ESIG para a rede municipal. Coordenada fora do próprio município até 500 m é puxada para a borda. Sem coordenada, ou mais longe que isso, a unidade vai para a sede do município, com aviso de localização aproximada no hover. A lista dessas unidades sai em `local/unidades_localizacao_aproximada.csv`, para correção no CNES.
-- **Desenho**: as duas camadas começam desligadas (o mapa abre com casos, indicador e GERES); o usuário liga no controle de camadas do mapa. Com o mapa afastado, as unidades próximas se juntam num círculo com o total (anel vermelho na rede SUS, escuro nas demais), que se desfaz ao aproximar ou ao clicar. Unidades no mesmo ponto se abrem em leque no zoom máximo. Isso evita uma mancha de símbolos no mapa do estado e mantém o navegador leve, porque só as unidades da área visível ficam na página.
+- **Desenho**: as três camadas começam desligadas (o mapa abre com casos, indicador e GERES); o usuário liga no controle de camadas do mapa. Com o mapa afastado, as unidades próximas se juntam num círculo com o total (anel azul tracejado nas UBS, azul contínuo na rede SUS, escuro nas demais), que se desfaz ao aproximar ou ao clicar. Unidades no mesmo ponto se abrem em leque no zoom máximo. Isso evita uma mancha de símbolos no mapa do estado e mantém o navegador leve, porque só as unidades da área visível ficam na página.
 - **Desempenho**: as unidades são desenhadas uma vez por sessão (cerca de 0,7 MB). Ao trocar filtros ou período, o servidor manda só a contagem de casos por unidade (cerca de 0,04 MB), e o navegador completa o hover quando ele abre (`js_contagem_unidades`). Redesenhar as unidades mandaria cerca de 0,8 MB a cada clique.
 - **Atualização**: `Rscript dev/build_unidades_cnes.R`, com a base local já montada (os códigos das notificadoras saem dos casos). Grava `local/unidades_cnes.rds`, que não é versionado. Nesta vitrine, o cadastro vem pronto em `inst/extdata/dados_ficticios/unidades_cnes.rds` e é copiado para `local/` na primeira abertura; o número de casos de cada unidade é fictício.
-- **Código**: `camadas_unidades`, `adicionar_camada_unidades()` e os observadores "Unidades de saude" em `R/mod_municipio.R`; `carrega_unidades()` e `normaliza_cnes()` em `R/fct_casos.R`; estilo dos agrupamentos em `inst/app/badges_inline.css`.
+- **Código**: `camadas_unidades`, `categoria_unidade()`, `adicionar_camada_unidades()` e os observadores "Unidades de saude" em `R/mod_municipio.R`; `carrega_unidades()` e `normaliza_cnes()` em `R/fct_casos.R`; estilo dos agrupamentos em `inst/app/badges_inline.css`.
 
 ### 2.6 Fernando de Noronha (quadro de detalhe)
 
@@ -115,7 +119,7 @@ Os **atalhos** aplicam um filtro mantendo os demais (classificação operacional
 
 ### 2.7 Território selecionado (clique no mapa)
 
-- **O que faz**: clicar num município do indicador (ou numa GERES, no recorte por GERES) seleciona esse território. Os cards, a distribuição dos desfechos, os casos no mapa e a tabela de casos passam a mostrar só os casos **residentes** nele, junto com os filtros e o período. O título do mapa e a coluna da esquerda mostram o território, e o mapa se enquadra nele com um contorno escuro, sem passar do zoom 10 para continuar dando para clicar nos vizinhos. O botão "Ver todo o estado" volta para Pernambuco.
+- **O que faz**: clicar num município do indicador (ou numa GERES, no recorte por GERES) seleciona esse território. Os cards, a distribuição dos desfechos, os casos no mapa e a tabela de casos passam a mostrar só os casos **residentes** nele, junto com os filtros e o período. O título do mapa e uma etiqueta logo abaixo dos cards mostram o território, e o mapa se enquadra nele com um contorno escuro, sem passar do zoom 10 para continuar dando para clicar nos vizinhos. O link "Ver todo o estado", na etiqueta, volta para Pernambuco.
 - **O que não muda**: o indicador do mapa continua com todos os territórios, para dar contexto e permitir clicar em outro. O hover das unidades de saúde continua contando todos os casos que a unidade notificou.
 - **Por que existe**: ver a situação de um município específico sem perder a visão do estado.
 - **Código**: `territorio_sel()`, `casos_territorio()`, `output$territorio_ui` e o observador "Territorio selecionado" em `R/mod_municipio.R`.
@@ -206,6 +210,6 @@ A classificação operacional tem cores próprias: paucibacilares em ocre (séri
 | Casos de hanseníase | **Vitrine: fictícios** (`inst/extdata/dados_ficticios/sinan_hanseniase_pe_ficticio.csv`, gerado por `dev/gerar_dados_ficticios.R`). Produção: SINAN, via pipeline de georreferenciamento do projeto, num PostgreSQL interno. Categorias pelo dicionário de dados do SINAN NET – Hanseníase | `local/sinan.duckdb` (`hans_sinan_treated`) e `local/casos_cache.rds` | Vitrine: trocar o CSV e reabrir a página. Produção: botão "Atualizar dados" |
 | Malha municipal (185) | IBGE 2022, resolução original, via [`geobr`](https://github.com/ipeaGIT/geobr); simplificada a 100 m preservando as divisas compartilhadas | `inst/app/www/shapes/municipios_pe.gpkg` | `dev/build_malhas_pe.R` |
 | GERES (12) | Regiões de saúde do Ministério da Saúde (2013), via `geobr` | `inst/app/www/shapes/geres_pe.gpkg` | `dev/build_malhas_pe.R` |
-| Unidades de saúde ("S" e "✕") | [API pública do CNES/DATASUS](https://apidadosabertos.saude.gov.br/cnes/estabelecimentos); em Recife, coordenadas da camada [Rede de Saúde de Recife](https://esigportal2.recife.pe.gov.br/arcgis/rest/services/Hosted/Rede_de_Sa%C3%BAde_de_Recife/FeatureServer/0) (SESAU/ESIG); sedes municipais via `geobr` | `local/unidades_cnes.rds` (na vitrine, copiado de `inst/extdata/dados_ficticios/unidades_cnes.rds`) | `dev/build_unidades_cnes.R` |
+| Unidades de saúde ("U", "✚" e "✕") | [API pública do CNES/DATASUS](https://apidadosabertos.saude.gov.br/cnes/estabelecimentos); em Recife, coordenadas da camada [Rede de Saúde de Recife](https://esigportal2.recife.pe.gov.br/arcgis/rest/services/Hosted/Rede_de_Sa%C3%BAde_de_Recife/FeatureServer/0) (SESAU/ESIG); sedes municipais via `geobr` | `local/unidades_cnes.rds` (na vitrine, copiado de `inst/extdata/dados_ficticios/unidades_cnes.rds`) | `dev/build_unidades_cnes.R` |
 | População total e < 15 anos | IBGE, Censo 2022 — SIDRA, tabelas 4714 e 9514 | nas duas malhas acima | `dev/build_malhas_pe.R` |
 | Mapas de fundo e fontes | Esri (`WorldGrayCanvas`, `WorldImagery`) e Google Fonts | Carregados pelo navegador | — |

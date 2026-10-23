@@ -93,8 +93,59 @@ if (window.LeafletWidget && !LeafletWidget.methods.ordenaCamadas) {
 }
 "
 
-# Contagem de casos no hover das unidades de saude (camadas "Rede SUS (S)" e
-# "Outras notificadoras (✕)"). As ~4 mil unidades sao desenhadas uma vez por
+# Casos no mapa por zoom (mesmo mecanismo dos paineis de TB): com o zoom
+# afastado (abaixo de ZOOM_PONTOS_CASOS), um balao por municipio com o
+# numero de casos; aproximando, os pontos de cada caso -- quase 2 mil
+# pontos no mapa do estado inteiro poluiam o mapa. Em 11 (e nao 14, como no
+# mapa de uma cidade) porque o mapa abre no estado inteiro: a partir dai' um
+# municipio ja' ocupa boa parte da tela. Balao e ponto sao grupos
+# (grupo_casos_baloes/grupo_casos_pontos) que ficam DENTRO do grupo "Casos"
+# do controle de camadas, nunca direto no mapa: o checkbox "Casos" liga/
+# desliga todos, e este metodo so' escolhe qual deles fica dentro, pelo
+# zoom. O groupOptions(zoomLevels) do leaflet nao serve -- religa o grupo a
+# cada zoom mesmo com o checkbox desmarcado. Os pontos sem municipio de
+# residencia em PE (residentes de outros estados) nao tem balao: ficam num
+# terceiro grupo (grupo_casos_fora_baloes), sempre dentro de "Casos", em
+# qualquer zoom. Sem balao (territorio selecionado no mapa: poucos pontos),
+# os pontos aparecem em qualquer zoom. Marca o container do mapa com
+# mostra-baloes/mostra-pontos, que escolhem a legenda (badges_inline.css).
+# Registrado no onRender do mapa, como os outros metodos; chamado pelo
+# servidor depois de redesenhar os casos e pelo mapa a cada zoom e a cada
+# vez que "Casos" e' ligado/desligado.
+ZOOM_PONTOS_CASOS <- 11
+grupo_casos_pontos <- "Casos (pontos)"
+grupo_casos_baloes <- "Casos (balões por município)"
+grupo_casos_fora_baloes <- "Casos (fora de PE)"
+js_casos_por_zoom <- sprintf("
+if (window.LeafletWidget && !LeafletWidget.methods.ajustaCasos) {
+  LeafletWidget.methods.ajustaCasos = function() {
+    var map = this, lm = map.layerManager;
+    if (!lm) return;
+    var casos = lm.getLayerGroup('Casos', true);
+    var pontos = lm.getLayerGroup('%s', true);
+    var baloes = lm.getLayerGroup('%s', true);
+    var fora = lm.getLayerGroup('%s', true);
+    // O leaflet poe todo grupo novo direto no mapa -- tira, o lugar dele e'
+    // dentro de 'Casos'
+    [pontos, baloes, fora].forEach(function(g) {
+      if (map.hasLayer(g) && !casos.hasLayer(g)) map.removeLayer(g);
+    });
+    if (!casos.hasLayer(fora)) casos.addLayer(fora);
+    var usaBaloes = baloes.getLayers().length > 0 && map.getZoom() < %d;
+    var entra = usaBaloes ? baloes : pontos, sai = usaBaloes ? pontos : baloes;
+    if (casos.hasLayer(sai)) casos.removeLayer(sai);
+    if (!casos.hasLayer(entra)) casos.addLayer(entra);
+    var ligado = map.hasLayer(casos), el = map.getContainer();
+    L.DomUtil[ligado && usaBaloes ? 'addClass' : 'removeClass'](el, 'mostra-baloes');
+    L.DomUtil[ligado && !usaBaloes ? 'addClass' : 'removeClass'](el, 'mostra-pontos');
+    // Pontos que voltam ao mapa entram no fim da ordem de desenho
+    if (ligado && LeafletWidget.methods.ordenaCamadas) LeafletWidget.methods.ordenaCamadas.call(map);
+  };
+}
+", grupo_casos_pontos, grupo_casos_baloes, grupo_casos_fora_baloes, ZOOM_PONTOS_CASOS)
+
+# Contagem de casos no hover das unidades de saude (camadas "UBS (U)", "Rede
+# SUS (✚)" e "Outras notificadoras (✕)"). As ~4 mil unidades sao desenhadas uma vez por
 # sessao; a cada troca de filtro ou periodo o servidor manda so' a contagem
 # por codigo CNES (metodo contagemUnidades, via leaflet::invokeMethod) --
 # redesenhar as unidades mandaria ~0,8 MB por clique. O navegador guarda a
@@ -121,6 +172,27 @@ if (window.LeafletWidget && !LeafletWidget.methods.contagemUnidades) {
       var casos = (cnes && map.contagemUnidades[cnes[1]]) || 0;
       tip.setContent(tip.rotuloBase + '<br><b>' + casos + '</b> caso(s) notificado(s) no período selecionado');
     });
+  };
+}
+"
+
+# Enquadramento do mapa (estado inteiro ou territorio selecionado) com o
+# painel "Distribuicao dos desfechos" por cima do canto superior esquerdo:
+# em tela larga, a area enquadrada fica a' direita dele, sem nada embaixo
+# do painel; em tela estreita o painel fica acima do mapa (badges_inline.css)
+# e nao precisa de margem. Registrado no onRender do mapa
+# (output$main_map); o servidor chama via leaflet::invokeMethod. Mesmo
+# metodo do painel de TB de PE.
+js_enquadra <- "
+if (window.LeafletWidget && !LeafletWidget.methods.enquadra) {
+  LeafletWidget.methods.enquadra = function(lng1, lat1, lng2, lat2, maxZoom) {
+    var map = this;
+    var painel = map.getContainer().parentNode.parentNode.querySelector('.painel-desfechos');
+    var largo = map.getSize().x >= 768 && painel && !painel.classList.contains('recolhido');
+    var esquerda = largo ? painel.offsetWidth + 70 : 20;
+    var opcoes = {paddingTopLeft: [esquerda, 20], paddingBottomRight: [20, 20]};
+    if (maxZoom) opcoes.maxZoom = maxZoom;
+    map.fitBounds([[lat1, lng1], [lat2, lng2]], opcoes);
   };
 }
 "
@@ -159,10 +231,12 @@ opcoes_picker <- function(nenhum, max_opcoes = NULL, acoes = TRUE) {
   )
 }
 
-# Card de estatistica numa coluna de largura igual as demais da linha (5
-# em cada uma); empilhados em tela estreita
+# Card do topo, compacto (.cards-topo no CSS), numa coluna de largura igual
+# as demais da linha: 5 por linha em tela larga, 3 e depois 2 em telas
+# menores. Os 10 cards da hanseniase ficam em duas linhas de 5 (numa so',
+# com os rodapes de cada card, ficariam estreitos demais).
 caixa_card <- function(id) {
-  htmltools::div(class = "col-12 col-md card-estatistica", bs4Dash::bs4ValueBoxOutput(id, width = NULL))
+  htmltools::div(class = "col-6 col-md-4 col-xl", bs4Dash::bs4ValueBoxOutput(id, width = NULL))
 }
 
 
@@ -185,7 +259,7 @@ mod_municipio_ui <- function(id) {
     shiny::fluidRow(
       bs4Dash::column(2,
                       ## General input ----
-                      htmltools::h1("Panorama geral", style = "font-weight: 600"),
+                      htmltools::h1("Panorama geral", class = "titulo-panorama"),
                       shiny::dateRangeInput(
                         ns("periodo"),
                         label = htmltools::HTML("Filtro de data de diagnóstico"),
@@ -210,29 +284,34 @@ mod_municipio_ui <- function(id) {
                         size = "xs",
                         width="60%"
                       ),
-                      # Territorio selecionado no mapa (ou a dica de como selecionar)
-                      shiny::uiOutput(ns("territorio_ui")),
                       align="center", style="z-index:1002;"
       ),
       ## Boxes ----
-      # Primeira linha: perfil dos casos no diagnostico; segunda: acompanhamento
+      # Cards compactos, como nos demais paineis. Primeira linha: perfil dos
+      # casos no diagnostico; segunda: acompanhamento
       bs4Dash::column(
         10,
-        shiny::fluidRow(
+        htmltools::div(
+          class = "row cards-topo",
           caixa_card(ns("box_total")),
           caixa_card(ns("box_paucibacilar")),
           caixa_card(ns("box_multibacilar")),
           caixa_card(ns("box_menor15")),
           caixa_card(ns("box_gif2"))
         ),
-        shiny::fluidRow(
+        htmltools::div(
+          class = "row cards-topo",
           caixa_card(ns("box_tratamento")),
           caixa_card(ns("box_cura")),
           caixa_card(ns("box_abandono")),
           caixa_card(ns("box_contatos")),
           caixa_card(ns("box_gif_avaliado"))
-        )
-      )
+        ),
+        # Municipio/GERES selecionado no mapa: etiqueta abaixo dos cards que
+        # ele filtra, com o "Ver todo o estado"
+        shiny::uiOutput(ns("territorio_ui"))
+      ),
+      class = "linha-topo"
     ),
     ## Filter boxes ----
     shiny::fluidRow(
@@ -371,58 +450,75 @@ mod_municipio_ui <- function(id) {
                         status = "primary",
                         solidHeader = TRUE,
                         icon = shiny::icon("map-pin"),
-                        shiny::fluidRow(
-                          bs4Dash::column(4,
-
-                                          htmltools::h3("Distribuição dos desfechos", style = "font-weight: 600"),
-
-                                          htmltools::p("Selecione quais desfechos a serem mostrados no mapa", style = "color: gray; font-size: 14px"),
-
-                                          reactable::reactableOutput(ns("casos_table")),
-
-                                          htmltools::hr(),
-
-                                          htmltools::h3("Indicadores por território", style = "font-weight: 600"),
-
-                                          shinyWidgets::prettyCheckbox(ns("show_indicador"),
-                                                                       label = "Mostrar indicador no mapa",
-                                                                       status = "info",
-                                                                       icon = shiny::icon("check"),
-                                                                       value = TRUE),
-                                          shiny::radioButtons(
-                                            ns("nivel_territorial"),
-                                            label = "Recorte",
-                                            choices = c("Município" = "municipio", "GERES" = "geres"),
-                                            selected = "municipio",
-                                            inline = TRUE
-                                          ),
-                                          shiny::selectInput(
-                                            ns("indicador"),
-                                            label = "Indicador",
-                                            choices = stats::setNames(
-                                              names(config_indicadores),
-                                              vapply(config_indicadores, function(x) x$opcao, character(1))
-                                            ),
-                                            selected = "det"
-                                          ),
-                                          shiny::uiOutput(ns("indicador_nota"))
-
+                        shiny::uiOutput(ns("main_map_title")),
+                        shiny::uiOutput(ns("main_map_subtitle")),
+                        # Indicador por territorio: barra fina acima do mapa
+                        # (antes na coluna da esquerda, junto dos desfechos)
+                        htmltools::div(
+                          class = "barra-indicador",
+                          htmltools::span(class = "barra-indicador-titulo", "Indicador por território"),
+                          shinyWidgets::prettyCheckbox(ns("show_indicador"),
+                                                       label = "Mostrar no mapa",
+                                                       status = "info",
+                                                       icon = shiny::icon("check"),
+                                                       value = TRUE),
+                          shiny::radioButtons(
+                            ns("nivel_territorial"),
+                            label = "Recorte",
+                            choices = c("Município" = "municipio", "GERES" = "geres"),
+                            selected = "municipio",
+                            inline = TRUE
                           ),
-                          bs4Dash::column(8,
-                                          shiny::uiOutput(ns("main_map_title")),
-                                          shiny::uiOutput(ns("main_map_subtitle")),
-                                          # div so' pro spinner (badges_inline.css) -- no mapa, pelo
-                                          # estado "ocupado" do servidor: as camadas sao atualizadas
-                                          # por leafletProxy, a saida nao recalcula
-                                          htmltools::div(
-                                            class = "saida-carregando saida-carregando-ocupado",
-                                            leaflet::leafletOutput(ns("main_map"), height = 720)
-                                          ),
-                                          # Os demais metodos do mapa sao registrados no onRender
-                                          # (ver output$main_map)
-                                          htmltools::tags$script(htmltools::HTML(js_canvas_redesenho))
+                          shiny::selectInput(
+                            ns("indicador"),
+                            label = "Indicador",
+                            choices = stats::setNames(
+                              names(config_indicadores),
+                              vapply(config_indicadores, function(x) x$opcao, character(1))
+                            ),
+                            selected = "det",
+                            # nomes dos indicadores mais longos que os da TB
+                            width = "460px"
                           )
-                        )
+                        ),
+                        # Nota do indicador escolhido e dica do clique no mapa
+                        shiny::uiOutput(ns("indicador_nota")),
+                        # Mapa na largura toda, com a distribuicao dos
+                        # desfechos num painel por cima dele (canto superior
+                        # esquerdo, ao lado do zoom): aberto por padrao,
+                        # recolhe e abre clicando no cabecalho -- so' no
+                        # navegador, sem ida ao servidor. Irmao do mapa (nao
+                        # dentro dele): roda do mouse e arrasto no painel nao
+                        # mexem no mapa.
+                        htmltools::div(
+                          class = "mapa-com-painel",
+                          # div so' pro spinner (badges_inline.css) -- no mapa, pelo
+                          # estado "ocupado" do servidor: as camadas sao atualizadas
+                          # por leafletProxy, a saida nao recalcula
+                          htmltools::div(
+                            class = "saida-carregando saida-carregando-ocupado",
+                            leaflet::leafletOutput(ns("main_map"), height = 720)
+                          ),
+                          htmltools::div(
+                            class = "painel-desfechos",
+                            htmltools::tags$button(
+                              type = "button",
+                              class = "painel-desfechos-cabecalho",
+                              `aria-expanded` = "true",
+                              onclick = "var p = this.parentElement; this.setAttribute('aria-expanded', !p.classList.toggle('recolhido'));",
+                              htmltools::span("Distribuição dos desfechos"),
+                              shiny::icon("chevron-up", class = "painel-desfechos-seta")
+                            ),
+                            htmltools::div(
+                              class = "painel-desfechos-corpo",
+                              htmltools::p("Marque os desfechos a mostrar no mapa", class = "painel-desfechos-dica"),
+                              reactable::reactableOutput(ns("casos_table"))
+                            )
+                          )
+                        ),
+                        # Os demais metodos do mapa sao registrados no onRender
+                        # (ver output$main_map)
+                        htmltools::tags$script(htmltools::HTML(js_canvas_redesenho))
                       ),
       )
     ),
@@ -727,10 +823,11 @@ popup_caso <- function(casos) {
   )
 }
 
-# Simbolos das unidades de saude, como no painel de TB de Recife: "S"
-# vermelho pra rede publica/SUS e "✕" pras demais unidades notificadoras.
-# Desenhados em SVG (icone de marcador comum), com contorno branco pra
-# aparecer sobre qualquer cor do indicador.
+# Simbolos das unidades de saude: "U" azul pras UBS/USF da rede publica,
+# cruz azul da marca do SUS pras demais unidades da rede publica e "✕" pras
+# demais unidades notificadoras -- mesmo padrao dos paineis de TB (Recife,
+# SP, Manaus, PE) e do DF. Desenhados em SVG (icone de marcador comum), com
+# contorno branco pra aparecer sobre qualquer cor do indicador.
 icone_svg <- function(svg, tamanho) {
   leaflet::makeIcon(
     iconUrl = paste0("data:image/svg+xml;charset=utf-8,", utils::URLencode(svg, reserved = TRUE)),
@@ -739,16 +836,30 @@ icone_svg <- function(svg, tamanho) {
   )
 }
 
+# Azul da rede SUS no mapa (cruz e "U" das UBS) -- proximo ao da marca do
+# SUS; o mesmo dos demais paineis
+cor_sus <- "#0B5CAD"
+
 camadas_unidades <- list(
+  ubs = list(
+    grupo = "UBS (U)",
+    cluster = "unidades_ubs",
+    rotulo_cluster = "UBS",
+    icone = icone_svg(paste0(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">',
+      '<text x="9" y="15" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" ',
+      'font-weight="900" fill="', cor_sus, '" stroke="#FFFFFF" stroke-width="3" ',
+      'stroke-linejoin="round" paint-order="stroke">U</text></svg>'
+    ), 18)
+  ),
   sus = list(
-    grupo = "Rede SUS (S)",
+    grupo = "Rede SUS (✚)",
     cluster = "unidades_sus",
     rotulo_cluster = "unidades da rede SUS",
     icone = icone_svg(paste0(
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">',
-      '<text x="9" y="15" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" ',
-      'font-weight="900" fill="', cores_cen$critico, '" stroke="#FFFFFF" stroke-width="3" ',
-      'stroke-linejoin="round" paint-order="stroke">S</text></svg>'
+      '<path d="M6.25 1h5.5v5.25H17v5.5h-5.25V17h-5.5v-5.25H1v-5.5h5.25z" ',
+      'fill="', cor_sus, '" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/></svg>'
     ), 18)
   ),
   outras = list(
@@ -763,6 +874,22 @@ camadas_unidades <- list(
     ), 16)
   )
 )
+
+# Categoria de cada unidade de saude no mapa, a partir das colunas de
+# local/unidades_cnes.rds (publica, tipo_unidade -- sem precisar gerar o
+# arquivo de novo). Mesma divisao dos demais paineis:
+#   "ubs"    -- "U": UBS/USF da rede publica (tipo CNES 2, "Centro de
+#               saude/Unidade basica"; postos de saude, tipo 1, ficam com a
+#               cruz)
+#   "sus"    -- cruz: demais unidades da rede publica
+#   "outras" -- "✕": demais notificadoras (privadas, filantropicas)
+categoria_unidade <- function(publica, tipo_unidade) {
+  dplyr::case_when(
+    publica %in% TRUE & grepl("^Unidade básica de saúde", tipo_unidade) ~ "ubs",
+    publica %in% TRUE ~ "sus",
+    TRUE ~ "outras"
+  )
+}
 
 # Camada de unidades de saude no mapa. Com ~4 mil unidades no estado, as
 # proximas umas das outras se juntam num circulo com o total (Leaflet.
@@ -1204,25 +1331,21 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
       )
     })
 
-    # Territorio selecionado no mapa, com o botao de voltar pro estado; sem
-    # selecao, a dica de como selecionar
+    # Etiqueta do territorio selecionado no mapa, logo abaixo dos cards (que
+    # ele filtra), com o "Ver todo o estado". Sem selecao, nada -- a dica de
+    # como selecionar fica embaixo da barra do indicador (indicador_nota).
     output$territorio_ui <- shiny::renderUI({
       nome <- territorio_nome()
-      if (is.null(nome)) {
-        dica <- if (identical(input$nivel_territorial, "geres")) {
-          "Clique numa GERES do mapa para ver só a situação dela."
-        } else {
-          "Clique num município do mapa para ver só a situação dele."
-        }
-        return(htmltools::p(class = "territorio-dica", dica))
-      }
+      if (is.null(nome)) return(NULL)
       htmltools::div(
-        class = "territorio-selecionado",
-        htmltools::div(class = "territorio-rotulo",
-                       if (territorio_sel()$recorte == "municipio") "Município selecionado" else "GERES selecionada"),
-        htmltools::div(class = "territorio-nome", nome),
-        shiny::actionButton(ns("territorio_limpar"), "Ver todo o estado", icon = shiny::icon("undo"),
-                            class = "btn-sm btn-primary")
+        class = "filtro-territorio",
+        htmltools::div(
+          htmltools::span(class = "filtro-territorio-rotulo",
+                          if (territorio_sel()$recorte == "municipio") "Município selecionado" else "GERES selecionada"),
+          htmltools::strong(nome)
+        ),
+        shiny::actionLink(ns("territorio_limpar"), "Ver todo o estado", icon = shiny::icon("undo"),
+                          title = "Voltar ao estado inteiro", class = "filtro-territorio-limpar")
       )
     })
 
@@ -1273,7 +1396,12 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
         prop_aband = "Abandono entre os casos novos já encerrados (com tipo de saída), exceto erro diagnóstico. Casos ainda em tratamento não entram na conta: o município em que nenhum caso novo do período foi encerrado fica sem cor, mesmo com casos no mapa.",
         prop_contatos = "Soma dos contatos examinados sobre a soma dos contatos registrados, nos casos novos."
       )
-      htmltools::p(nota, style = "color: gray; font-size: 13px")
+      dica <- if (identical(input$nivel_territorial, "geres")) {
+        "Clique numa GERES do mapa para ver só os números dela nos cards e nas tabelas."
+      } else {
+        "Clique num município do mapa para ver só os números dele nos cards e nas tabelas."
+      }
+      htmltools::p(nota, htmltools::br(), dica, class = "dica-territorio")
     })
 
     ## Box outputs ----
@@ -1289,7 +1417,8 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
       )
     }
 
-    rodape_texto <- function(texto) htmltools::div(style = "font-size: 13px;", texto)
+    # Tamanho do texto pelo CSS (.cards-topo .small-box-footer)
+    rodape_texto <- function(texto) htmltools::div(texto)
 
     # Rodape clicavel que aplica um filtro (ver aplica_atalho())
     rodape_atalho <- function(id, texto) {
@@ -1393,10 +1522,12 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
       desfecho_cont |>
         reactable::reactable(
           columns = list(
-            desfecho = reactable::colDef(name = "Desfecho"),
+            # larguras pro painel sobre o mapa: nome do desfecho numa linha so'
+            desfecho = reactable::colDef(name = "Desfecho", minWidth = 160, style = list(whiteSpace = "nowrap")),
             desfecho_id = reactable::colDef(show=F),
             n = reactable::colDef(
               name = "Frequência",
+              minWidth = 130,
               cell = function(value, index) {
                 desf <- desfecho_cont$desfecho[index]
                 prop <- desfecho_cont$prop[index]
@@ -1413,6 +1544,7 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
           ),
           defaultSorted = list(n = "desc"),
           defaultPageSize = 15,
+          compact = TRUE,
           sortable = F,
           selection = "multiple",
           defaultSelected = seq_len(nrow(desfecho_cont)),
@@ -1545,13 +1677,13 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
     #     desenhados uma vez;
     #   - contorno do territorio selecionado: quando a selecao muda (e o mapa
     #     se enquadra nele);
-    #   - unidades de saude (S e ✕): desenhadas uma vez; a cada troca de
+    #   - unidades de saude (U, ✚ e ✕): desenhadas uma vez; a cada troca de
     #     filtro ou periodo vai so' a contagem de casos do hover.
     # O usuario continua no zoom/posicao em que estava, e o popup de um caso
     # so' e' montado quando ele e' clicado.
 
     grupos_mapa <- c("Casos", "Indicador por território", "GERES",
-                     camadas_unidades$sus$grupo, camadas_unidades$outras$grupo)
+                     camadas_unidades$ubs$grupo, camadas_unidades$sus$grupo, camadas_unidades$outras$grupo)
 
     proxy_mapa <- function() leaflet::leafletProxy("main_map", session)
 
@@ -1585,9 +1717,18 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
         # indicador e GERES, e as unidades entram quando o usuario liga a
         # camada no controle. Como o mapa nao e' recriado, dai' em diante
         # vale o que o usuario escolheu.
-        leaflet::hideGroup(c(camadas_unidades$sus$grupo, camadas_unidades$outras$grupo)) |>
+        leaflet::hideGroup(c(camadas_unidades$ubs$grupo, camadas_unidades$sus$grupo, camadas_unidades$outras$grupo)) |>
         selo_ficticio_mapa() |>
         com_plugin_agrupamento() |>
+        # Aviso dos baloes de casos por municipio (zoom afastado) -- aparece
+        # no lugar da legenda dos desfechos, que so' vale pros pontos
+        # (classes mostra-baloes/mostra-pontos de js_casos_por_zoom)
+        leaflet::addControl(
+          htmltools::HTML("<strong>Casos por município</strong><br>Aproxime o zoom para ver<br>cada caso no mapa"),
+          position = "bottomleft",
+          layerId = "legenda_baloes",
+          className = "info legend legenda-baloes"
+        ) |>
         # Os metodos ordenaCamadas e contagemUnidades sao registrados aqui,
         # quando o mapa e' criado: e' garantido que o leaflet ja' carregou e
         # que nenhuma chamada do servidor chegou ainda. Num <script> da pagina
@@ -1595,10 +1736,20 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
         # indicador redesenhado ficava por cima dos casos e escondia os pontos.
         htmlwidgets::onRender(paste0("
           function(el, x) {
-            var map = this;", js_ordena_camadas, js_contagem_unidades, "
+            var map = this;", js_ordena_camadas, js_contagem_unidades, js_casos_por_zoom, js_enquadra,
+          # Estado inteiro a' direita do painel de desfechos (js_enquadra)
+          sprintf("
+            LeafletWidget.methods.enquadra.call(map, %f, %f, %f, %f, null);",
+            limites_mapa()[1], limites_mapa()[2], limites_mapa()[3], limites_mapa()[4]), "
             // Camada religada no controle entra no fim da ordem de desenho --
             // refaz a ordem (ver js_ordena_camadas)
             map.on('overlayadd', function() { LeafletWidget.methods.ordenaCamadas.call(map); });
+            // Balao por municipio ou ponto de cada caso, pelo zoom e pelo
+            // checkbox 'Casos' (ver js_casos_por_zoom)
+            map.on('zoomend', function() { LeafletWidget.methods.ajustaCasos.call(map); });
+            map.on('overlayadd overlayremove', function(e) {
+              if (e.name === 'Casos') LeafletWidget.methods.ajustaCasos.call(map);
+            });
             // Avisa o servidor que o mapa existe: as camadas (leafletProxy)
             // so' sao desenhadas depois disso -- chamada de proxy que chega
             // antes do mapa existir no navegador se perde.
@@ -1707,7 +1858,7 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
 
       if (is.null(sel)) {
         lim <- limites_mapa()
-        m |> leaflet::fitBounds(lim[1], lim[2], lim[3], lim[4])
+        m |> leaflet::invokeMethod(NULL, "enquadra", lim[1], lim[2], lim[3], lim[4], NULL)
         return()
       }
 
@@ -1725,27 +1876,31 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
                              group = "Seleção", options = leaflet::pathOptions(clickable = FALSE)) |>
         leaflet::addPolygons(data = geom, fill = FALSE, weight = 3.5, color = cores_cen$tinta, opacity = 1,
                              group = "Seleção", options = leaflet::pathOptions(clickable = FALSE)) |>
-        leaflet::fitBounds(bb[["xmin"]], bb[["ymin"]], bb[["xmax"]], bb[["ymax"]],
-                           options = list(maxZoom = 10, padding = c(30, 30))) |>
+        leaflet::invokeMethod(NULL, "enquadra", bb[["xmin"]], bb[["ymin"]], bb[["xmax"]], bb[["ymax"]], 10) |>
         leaflet::invokeMethod(NULL, "ordenaCamadas")
     })
 
     ### Unidades de saude (CNES) ----
 
-    # Desenhadas uma vez por sessao (local/unidades_cnes.rds, gerado por
-    # dev/build_unidades_cnes.R -- sem o arquivo, as camadas ficam vazias).
+    # Uma camada por categoria (ver categoria_unidade()): "U" azul pras
+    # UBS/USF, cruz azul pro resto da rede publica e "✕" pras demais
+    # notificadoras. Desenhadas uma vez por sessao (local/unidades_cnes.rds,
+    # gerado por dev/build_unidades_cnes.R -- sem o arquivo, as camadas
+    # ficam vazias).
     unidades_desenhadas <- shiny::reactiveVal(FALSE)
 
     shiny::observe({
       shiny::req(input$main_map_renderizado)
 
       unidades <- carrega_unidades()
+      categoria <- categoria_unidade(unidades$publica, unidades$tipo_unidade)
 
-      proxy_mapa() |>
-        leaflet::clearGroup(camadas_unidades$sus$grupo) |>
-        leaflet::clearGroup(camadas_unidades$outras$grupo) |>
-        adicionar_camada_unidades(unidades[unidades$publica %in% TRUE, ], camadas_unidades$sus) |>
-        adicionar_camada_unidades(unidades[!unidades$publica %in% TRUE, ], camadas_unidades$outras)
+      m <- proxy_mapa()
+      for (cat in names(camadas_unidades)) {
+        m <- m |>
+          leaflet::clearGroup(camadas_unidades[[cat]]$grupo) |>
+          adicionar_camada_unidades(unidades[categoria == cat, ], camadas_unidades[[cat]])
+      }
 
       unidades_desenhadas(nrow(unidades) > 0)
     })
@@ -1852,8 +2007,13 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
       casos <- casos_points() |>
         dplyr::filter(georreferenciado == 1, !sf::st_is_empty(geometry))
 
+      # Pontos, pontos sem municipio de PE e baloes ficam em grupos
+      # proprios, dentro do grupo "Casos" do controle de camadas (ver
+      # js_casos_por_zoom)
       m <- proxy_mapa() |>
-        leaflet::clearGroup("Casos")
+        leaflet::clearGroup(grupo_casos_pontos) |>
+        leaflet::clearGroup(grupo_casos_fora_baloes) |>
+        leaflet::clearGroup(grupo_casos_baloes)
 
       if (nrow(casos) > 0) {
         label_info <- sprintf(
@@ -1873,39 +2033,96 @@ mod_municipio_server <- function(id, cache_trigger = shiny::reactiveVal(0)){
         xy <- sf::st_coordinates(casos)
         xy <- desloca_noronha_xy(xy[, "X"], xy[, "Y"])
 
+        # Pontos de residentes de PE (balao do municipio no zoom afastado) e
+        # de residentes de outros estados (sempre como pontos)
+        em_municipio <- !is.na(casos$territorio_municipio)
+        id_caso <- paste0("caso_", seq_len(nrow(casos)))
+
+        adicionar_pontos <- function(m, sel, grupo) {
+          if (!any(sel)) return(m)
+          m |>
+            leaflet::addCircleMarkers(
+              lng = xy$x[sel],
+              lat = xy$y[sel],
+              # "caso_<n>": linha de casos_desenhados(), pro popup do clique
+              layerId = id_caso[sel],
+              radius = 3.5,
+              fillColor = pal(casos$desfecho[sel]),
+              fillOpacity = 0.95,
+              # contorno branco fino: destaca o ponto sobre qualquer cor do
+              # indicador por baixo
+              stroke = TRUE,
+              color = "#FFFFFF",
+              weight = 0.75,
+              opacity = 0.6,
+              label = label_info[sel],
+              group = grupo,
+              # Sem pane proprio: no Leaflet 1.3 pane personalizado desenha em
+              # SVG (ignora preferCanvas) e roubaria o hover das camadas de baixo.
+              options = leaflet::pathOptions()
+            )
+        }
+
         m <- m |>
-          leaflet::addCircleMarkers(
-            lng = xy$x,
-            lat = xy$y,
-            # "caso_<n>": linha de casos_desenhados(), pro popup do clique
-            layerId = paste0("caso_", seq_len(nrow(casos))),
-            radius = 3.5,
-            fillColor = pal(casos$desfecho),
-            fillOpacity = 0.95,
-            # contorno branco fino: destaca o ponto sobre qualquer cor do
-            # indicador por baixo
-            stroke = TRUE,
-            color = "#FFFFFF",
-            weight = 0.75,
-            opacity = 0.6,
-            label = label_info,
-            group = 'Casos',
-            # Sem pane proprio: no Leaflet 1.3 pane personalizado desenha em
-            # SVG (ignora preferCanvas) e roubaria o hover das camadas de baixo.
-            options = leaflet::pathOptions()
-          ) |> leaflet::addLegend(
+          adicionar_pontos(em_municipio, grupo_casos_pontos) |>
+          adicionar_pontos(!em_municipio, grupo_casos_fora_baloes) |>
+          leaflet::addLegend(
             pal = pal, values = casos$desfecho,
             opacity = 0.7, title = NULL,
             position = "bottomleft",
-            layerId = "legenda_casos"
+            layerId = "legenda_casos",
+            # so' aparece com os pontos na tela (classe mostra-pontos)
+            className = "info legend legenda-casos"
           )
+
+        # Baloes por municipio (zoom afastado, ver js_casos_por_zoom): quantos
+        # destes pontos sao de residentes de cada municipio
+        # (territorio_municipio, o mesmo dos indicadores), no ponto interno
+        # do municipio -- aproximando, o balao vira os mesmos pontos. So' sem
+        # territorio selecionado: com ele, os poucos pontos do territorio
+        # aparecem em qualquer zoom. Sem interacao (o rotulo do Leaflet nao
+        # captura o mouse): clicar no balao e' clicar no municipio embaixo.
+        n <- as.integer(table(factor(casos$territorio_municipio, levels = malha_municipios()$code_muni)))
+        com_casos <- n > 0
+
+        if (is.null(territorio_sel()) && any(com_casos)) {
+          posicao <- pontos_internos_municipios()[com_casos, , drop = FALSE]
+          n <- n[com_casos]
+
+          # Diametro de 22 a 44 px pela raiz da contagem (area do balao
+          # proporcional ao numero de casos)
+          diametro <- round(22 + 22 * sqrt(n / max(n)))
+          rotulo <- sprintf(
+            '<div class="balao-casos" style="min-width:%1$dpx;height:%1$dpx;line-height:%2$dpx;font-size:%3$dpx">%4$s</div>',
+            diametro, diametro - 4, ifelse(diametro >= 34, 13L, 11L),
+            format(n, big.mark = ".", decimal.mark = ",", trim = TRUE)
+          ) |> lapply(htmltools::HTML)
+
+          m <- m |>
+            leaflet::addLabelOnlyMarkers(
+              lng = posicao[, "X"], lat = posicao[, "Y"],
+              label = rotulo,
+              labelOptions = leaflet::labelOptions(
+                noHide = TRUE,
+                direction = "center",
+                textOnly = TRUE,
+                className = "balao-casos-rotulo"
+              ),
+              group = grupo_casos_baloes,
+              options = leaflet::markerOptions(interactive = FALSE)
+            )
+        }
       } else {
         m <- m |> leaflet::removeControl("legenda_casos")
       }
 
       casos_desenhados(casos)
 
-      m |> leaflet::invokeMethod(NULL, "ordenaCamadas")
+      # Casos redesenhados entram no fim da ordem; depois, balao ou ponto
+      # conforme o zoom
+      m |>
+        leaflet::invokeMethod(NULL, "ordenaCamadas") |>
+        leaflet::invokeMethod(NULL, "ajustaCasos")
     })
 
     # Popup do caso clicado, montado na hora

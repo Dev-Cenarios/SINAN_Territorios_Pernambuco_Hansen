@@ -231,6 +231,21 @@ malha_geres_desenho <- function() {
   memo_processo("malha_geres_desenho", desloca_noronha(sf::st_transform(malha_geres(), 4326)))
 }
 
+# Ponto interno de cada municipio em lon/lat (WGS 84), na ordem de
+# malha_municipios() -- onde fica o balao com o numero de casos do
+# municipio no mapa (zoom afastado). Da malha do desenho, com Noronha no
+# quadro de detalhe; calculado em Web Mercator, nao em lon/lat.
+pontos_internos_municipios <- function() {
+  memo_processo("pontos_internos_municipios", {
+    pontos <- malha_municipios_desenho() |>
+      sf::st_transform(3857) |>
+      sf::st_geometry() |>
+      sf::st_point_on_surface() |>
+      sf::st_transform(4326)
+    sf::st_coordinates(pontos)
+  })
+}
+
 # Quadro de detalhe de Noronha (lng1, lat1, lng2, lat2): extensao das ilhas
 # deslocadas, com margem
 quadro_noronha <- function() {

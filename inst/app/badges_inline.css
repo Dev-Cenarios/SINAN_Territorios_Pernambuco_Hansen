@@ -236,24 +236,236 @@ a {
   color: var(--cen-s8) !important;
 }
 
-/* Cards de estatistica com altura igual dentro de cada linha: a coluna
-   estica ate' a altura do card mais alto da linha (flex do bootstrap), o
-   card ocupa a coluna toda (menos a margem de baixo) e o rodape fica no
-   fundo, dentro do card. Com altura fixa, um subtitulo de duas linhas
-   empurrava o rodape pra cima da linha de baixo. */
-.card-estatistica > .shiny-html-output {
-  height: 100%;
+/* Cards do topo compactos (R/mod_municipio.R, .cards-topo), como nos
+   demais paineis -- sobra mais tela pro mapa. Duas linhas de 5 (perfil no
+   diagnostico e acompanhamento), com a mesma altura dentro de cada linha:
+   a coluna estica ate' o card mais alto (flex do bootstrap) e o rodape fica
+   no fundo, numa linha so'. Diferente de Recife, o rodape fica embaixo (e
+   nao no canto): aqui ele traz informacao ("x notificacoes no total", "Ver
+   nao avaliados: n (%)"), nao so' um atalho curto. */
+.linha-topo {
+  margin-bottom: 4px;
 }
-.card-estatistica .small-box {
-  height: calc(100% - 20px);
+.cards-topo > [class*="col"] {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+.cards-topo > [class*="col"] > .shiny-html-output {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.cards-topo .small-box {
+  flex: 1 1 auto;
   display: flex !important;
   flex-direction: column !important;
+  min-height: 84px;
+  margin-bottom: 10px;
+  overflow: hidden;
 }
-.card-estatistica .small-box > .inner {
+.cards-topo .small-box > .inner {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+}
+.cards-topo .small-box .inner h3 {
+  font-size: 26px;
+  margin: 0 0 2px;
+  padding-right: 24px;
+  white-space: nowrap;
+}
+.cards-topo .small-box .inner h5,
+.cards-topo .small-box .inner p {
+  font-size: 13px;
+  line-height: 1.25;
+  margin: 0;
+}
+.cards-topo .small-box .icon > i,
+.cards-topo .small-box:hover .icon > i {
+  font-size: 22px;
+  top: 10px;
+  right: 10px;
+  opacity: 0.45;
+}
+.cards-topo .small-box .small-box-footer {
+  margin-top: auto;
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+/* Titulo do painel menor (era 32 px) -- a linha de cima fica baixa */
+.content-wrapper h1.titulo-panorama {
+  font-size: 22px;
+  margin: 2px 0 6px;
+}
+.linha-topo .form-group {
+  margin-bottom: 6px;
+}
+
+/* Indicador por territorio: barra fina acima do mapa */
+.barra-indicador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 22px;
+  padding: 6px 2px 0;
+}
+.barra-indicador-titulo {
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--cen-azul-texto);
+}
+.barra-indicador .form-group,
+.barra-indicador .shiny-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+.barra-indicador .control-label {
+  margin: 0;
+}
+.barra-indicador .shiny-options-group {
+  display: flex;
+  gap: 14px;
+}
+.barra-indicador .radio-inline {
+  margin: 0;
+}
+.barra-indicador .selectize-control {
+  margin-bottom: 0;
+  min-width: 260px;
   flex: 1 1 auto;
 }
-.card-estatistica .small-box .small-box-footer {
-  margin-top: auto;
+.barra-indicador .pretty {
+  margin: 0;
+}
+/* Nota do indicador e dica do clique no mapa, logo abaixo da barra */
+.dica-territorio {
+  margin: 4px 2px 8px;
+  font-size: 12.5px;
+  color: var(--cen-tinta-3);
+}
+
+/* Distribuicao dos desfechos: painel recolhivel por cima do mapa, no
+   canto superior esquerdo (ao lado dos botoes de zoom). Aberto por
+   padrao; o cabecalho recolhe e abre (classe "recolhido"). */
+.mapa-com-painel {
+  position: relative;
+}
+.painel-desfechos {
+  position: absolute;
+  top: 10px;
+  left: 52px;
+  z-index: 1000;
+  width: 360px;
+  max-height: calc(100% - 20px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--cen-linha);
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(18, 34, 43, 0.18);
+}
+.painel-desfechos-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--cen-azul-texto);
+  text-align: left;
+}
+.painel-desfechos-cabecalho:hover {
+  background: var(--cen-azul-fundo);
+}
+.painel-desfechos-seta {
+  transition: transform 0.2s;
+}
+.painel-desfechos.recolhido {
+  width: auto;
+}
+.painel-desfechos.recolhido .painel-desfechos-corpo {
+  display: none;
+}
+.painel-desfechos.recolhido .painel-desfechos-seta {
+  transform: rotate(180deg);
+}
+.painel-desfechos-corpo {
+  padding: 0 10px 8px;
+}
+.painel-desfechos-dica {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--cen-tinta-3);
+}
+.painel-desfechos .reactable {
+  font-size: 13px;
+  background: transparent;
+}
+/* Tela estreita: painel acima do mapa, em vez de cobrir o mapa todo */
+@media (max-width: 767px) {
+  .mapa-com-painel {
+    display: flex;
+    flex-direction: column;
+  }
+  .painel-desfechos {
+    order: -1;
+    position: static;
+    width: auto;
+    max-height: none;
+    margin-bottom: 8px;
+  }
+}
+
+/* Casos no mapa por zoom (js_casos_por_zoom em R/mod_municipio.R): zoom
+   afastado = um balao por municipio com o numero de casos; aproximando = os
+   pontos. O container do mapa ganha mostra-baloes ou mostra-pontos, que
+   escolhem a legenda: a dos desfechos so' vale pros pontos, e no lugar dela
+   vai o aviso dos baloes. Com "Casos" desligado, nenhuma das duas. */
+.leaflet-container .legenda-casos,
+.leaflet-container .legenda-baloes {
+  display: none;
+}
+.leaflet-container.mostra-pontos .legenda-casos,
+.leaflet-container.mostra-baloes .legenda-baloes {
+  display: block;
+}
+.legenda-baloes {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--cen-tinta-2);
+}
+/* Rotulo do Leaflet sem fundo/borda (textOnly) -- o balao e' o div de
+   dentro. Sem interacao: o clique passa pro municipio embaixo. */
+.leaflet-tooltip.balao-casos-rotulo {
+  padding: 0;
+  pointer-events: none;
+}
+.balao-casos {
+  box-sizing: border-box;
+  padding: 0 5px;
+  border: 2px solid #FFFFFF;
+  border-radius: 999px;
+  background: var(--cen-azul-acao);
+  box-shadow: 0 0 0 3px rgba(14, 123, 168, 0.3);
+  color: #FFFFFF;
+  font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* Mapa: legenda e rotulos em DM Sans 400 12-13 px (eixo/legenda do guia) */
@@ -471,8 +683,8 @@ html.shiny-busy .saida-carregando-ocupado > .shiny-bound-output::after {
 
 /* Agrupamentos das unidades de saude no mapa (Leaflet.markercluster, ver
    adicionar_camada_unidades() em R/mod_municipio.R): circulo branco com o
-   total, no vermelho critico do "S" (rede SUS) ou na cor de tinta do "✕"
-   (outras notificadoras). */
+   total, no azul do "U" e da cruz (UBS e rede SUS, cor_sus) ou na cor de
+   tinta do "✕" (outras notificadoras). */
 .cluster-unidades div {
   width: 30px;
   height: 30px;
@@ -488,44 +700,50 @@ html.shiny-busy .saida-carregando-ocupado > .shiny-bound-output::after {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+.cluster-ubs div,
 .cluster-sus div {
-  border: 2px solid var(--cen-critico);
-  color: var(--cen-critico);
+  border: 2px solid #0B5CAD;
+  color: #0B5CAD;
+}
+.cluster-ubs div {
+  border-style: dashed;
 }
 .cluster-outras div {
   border: 2px solid var(--cen-tinta);
   color: var(--cen-tinta);
 }
 
-/* Territorio selecionado no mapa (coluna "Panorama geral", ver
-   output$territorio_ui em R/mod_municipio.R): sem selecao, a dica; com
-   selecao, o nome e o botao de voltar pro estado. */
-.territorio-dica {
-  margin-top: 14px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--cen-tinta-3);
-}
-.territorio-selecionado {
-  margin-top: 14px;
-  padding: 10px 12px;
-  text-align: left;
-  background: var(--cen-superficie);
-  border: 1px solid var(--cen-linha);
-  border-left: 5px solid var(--cen-tinta);
+/* Territorio selecionado no mapa (ver output$territorio_ui em
+   R/mod_municipio.R): etiqueta abaixo dos cards que ele filtra, com o "Ver
+   todo o estado" -- mesmo desenho dos demais paineis */
+.filtro-territorio {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  margin: 0 0 8px;
+  padding: 4px 10px 4px 12px;
+  background: var(--cen-azul-fundo);
+  border: 1px solid var(--cen-azul-acao);
   border-radius: 8px;
+  color: var(--cen-tinta);
+  line-height: 1.3;
+  text-align: left;
 }
-.territorio-rotulo {
+.filtro-territorio-rotulo {
+  display: block;
   font-size: 12px;
   color: var(--cen-tinta-3);
 }
-.territorio-nome {
-  margin-bottom: 8px;
-  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+.filtro-territorio-limpar {
+  padding: 2px 4px;
+  font-size: 13px;
   font-weight: 700;
-  font-size: 16px;
-  line-height: 1.25;
-  color: var(--cen-tinta);
+  white-space: nowrap;
+  color: var(--cen-azul-acao) !important;
+}
+.filtro-territorio-limpar:hover {
+  color: var(--cen-azul-texto) !important;
 }
 
 /* ===================================================================== */

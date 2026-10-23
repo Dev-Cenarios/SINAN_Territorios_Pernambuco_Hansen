@@ -1,10 +1,11 @@
 # dev/build_unidades_cnes.R -- unidades de saude do mapa (Pernambuco)
 # ==================================================================================
-# Monta local/unidades_cnes.rds, lido pelas camadas "Rede SUS (S)" e "Outras
-# notificadoras (✕)" do mapa:
-#   - Rede SUS: toda a rede publica assistencial de Pernambuco (postos,
+# Monta local/unidades_cnes.rds, lido pelas camadas "UBS (U)", "Rede SUS (✚)"
+# e "Outras notificadoras (✕)" do mapa (ver categoria_unidade() em
+# R/mod_municipio.R):
+#   - UBS e Rede SUS: toda a rede publica assistencial de Pernambuco (postos,
 #     UBS/USF, policlinicas, hospitais publicos, UPA, CAPS...), mesmo sem
-#     caso notificado;
+#     caso notificado -- as UBS/USF com "U", o resto com a cruz;
 #   - Outras notificadoras: as demais unidades que aparecem como
 #     notificadoras nos casos do painel (filantropicas, privadas...).
 # Dados da API publica do CNES/DATASUS (coordenada, tipo, natureza juridica,
@@ -322,7 +323,8 @@ dir.create("local", showWarnings = FALSE)
 saveRDS(unidades, "local/unidades_cnes.rds")
 
 message(sprintf(
-  "Salvo em local/unidades_cnes.rds: %d unidades -- %d da rede SUS (S) e %d outras notificadoras (✕).%s",
-  nrow(unidades), sum(unidades$publica), sum(!unidades$publica),
+  "Salvo em local/unidades_cnes.rds: %d unidades -- %d UBS/USF (U), %d demais da rede SUS (✚) e %d outras notificadoras (✕).%s",
+  nrow(unidades), sum(categoria_unidade(unidades$publica, unidades$tipo_unidade) == "ubs"),
+  sum(categoria_unidade(unidades$publica, unidades$tipo_unidade) == "sus"), sum(!unidades$publica),
   if (any(aproximar)) " Unidades com localizacao aproximada listadas em local/unidades_localizacao_aproximada.csv." else ""
 ))
